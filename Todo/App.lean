@@ -1,5 +1,5 @@
 import Std.Http.Server
-import SQLite
+import Postgres
 import Html
 import Routing
 import Forms
@@ -16,7 +16,7 @@ open Routes
 
 namespace Todo
 
-def render (db : SQLite) (filter : Filter)
+def render (db : Postgres.Conn) (filter : Filter)
     (renderHtml : Array Item → Array Item → Filter → String) :
     ContextAsync (Response Body.Any) := do
   let items ← list db filter
@@ -25,57 +25,57 @@ def render (db : SQLite) (filter : Filter)
 
 /-- Renders the fragment for whichever filter the client is currently viewing, per the
 `HX-Current-URL` header HTMX sends with every request. -/
-def renderMutation (db : SQLite) (req : Request Body.Stream) : ContextAsync (Response Body.Any) :=
+def renderMutation (db : Postgres.Conn) (req : Request Body.Stream) : ContextAsync (Response Body.Any) :=
   let currentFilter := match req.line.headers.get? (.ofString! "hx-current-url") with
   | some v => filterFromPath v.value
   | none => .all
   render db currentFilter mutationFragment
 
-def pageHandler (filter : Filter) (db : SQLite) (_req : Request Body.Stream) : ContextAsync (Response Body.Any) :=
+def pageHandler (filter : Filter) (db : Postgres.Conn) (_req : Request Body.Stream) : ContextAsync (Response Body.Any) :=
   render db filter pageView
 
 /-- Swaps one todo's `<li>` into edit mode. Not a mutation (nothing in the DB changes), so unlike
 every other route below it targets and returns just that one item, not the whole list section. -/
-def editHandler (db : SQLite) (id : Nat) (_req : Request Body.Stream) :
+def editHandler (db : Postgres.Conn) (id : Nat) (_req : Request Body.Stream) :
     ContextAsync (Response Body.Any) := do
   let items ← list db .all
   match items.find? (fun item => item.id == Int64.ofNat id) with
   | some item => Node.render (itemEditView item) |> Response.ok.html
   | none => "Not Found" |> Response.notFound.text
 
-def addHandler (db : SQLite) (req : Request Body.Stream) : ContextAsync (Response Body.Any) := do
+def addHandler (db : Postgres.Conn) (req : Request Body.Stream) : ContextAsync (Response Body.Any) := do
   let fields ← parseForm req.body
   match fields.lookup "title" with
   | some title => add db title; renderMutation db req
   | none => "Missing title" |> Response.badRequest.text
 
-def saveHandler (db : SQLite) (id : Nat) (req : Request Body.Stream) :
+def saveHandler (db : Postgres.Conn) (id : Nat) (req : Request Body.Stream) :
     ContextAsync (Response Body.Any) := do
   let fields ← parseForm req.body
   match fields.lookup "title" with
   | some title => setTitle db (Int64.ofNat id) title; renderMutation db req
   | none => "Missing title" |> Response.badRequest.text
 
-def toggleHandler (db : SQLite) (id : Nat) (req : Request Body.Stream) :
+def toggleHandler (db : Postgres.Conn) (id : Nat) (req : Request Body.Stream) :
     ContextAsync (Response Body.Any) := do
   toggle db (Int64.ofNat id)
   renderMutation db req
 
-def deleteHandler (db : SQLite) (id : Nat) (req : Request Body.Stream) :
+def deleteHandler (db : Postgres.Conn) (id : Nat) (req : Request Body.Stream) :
     ContextAsync (Response Body.Any) := do
   delete db (Int64.ofNat id)
   renderMutation db req
 
-def toggleAllHandler (db : SQLite) (req : Request Body.Stream) : ContextAsync (Response Body.Any) := do
+def toggleAllHandler (db : Postgres.Conn) (req : Request Body.Stream) : ContextAsync (Response Body.Any) := do
   toggleAll db
   renderMutation db req
 
-def clearCompletedHandler (db : SQLite) (req : Request Body.Stream) :
+def clearCompletedHandler (db : Postgres.Conn) (req : Request Body.Stream) :
     ContextAsync (Response Body.Any) := do
   clearCompleted db
   renderMutation db req
 
-def app (db : SQLite) : StatelessHandler :=
+def app (db : Postgres.Conn) : StatelessHandler :=
   List.map (· db) [
     .get patterns.index ∘ pageHandler .all,
     .get patterns.active ∘ pageHandler .active,

@@ -1,6 +1,13 @@
 {
 	"name": "Ubuntu",
 	"build": { "dockerfile": "Dockerfile" },
+	
+	"containerEnv": {
+    "PGHOST": "host.docker.internal",
+    "PGPORT": "5432",
+    "PGUSER": "leantodomvc",
+    "PGDATABASE": "leantodomvc"
+  },
 
 	"customizations": {
 		"vscode": {
