@@ -6,7 +6,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Std.Http.Server
 import SQLite
 import Html
-import Routing
+import RoutingStd
 import Middleware
 import Todo.Db
 import Todo.Links
@@ -82,7 +82,7 @@ def clearCompletedHandler (db : SQLite) (req : Request Body.Stream) :
   clearCompleted db
   renderMutation db req
 
-def app (db : SQLite) : StatelessHandler :=
+def app (db : SQLite) : Routing.StatelessHandler .std :=
   List.map (· db) [
     .get patterns.index ∘ pageHandler .all,
     .get patterns.active ∘ pageHandler .active,
@@ -116,6 +116,6 @@ def server [SessionStore σ] (db : SQLite) (sessions : σ) : StatelessHandler :=
      defaultCharset,
      notModified,
      file "public"]
-    (app db)
+    (app db).toStd
 
 end Todo
