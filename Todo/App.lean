@@ -101,7 +101,8 @@ def app (db : SQLite) : Routing.StatelessHandler .std :=
 is run directly over plain http rather than behind a TLS-terminating reverse proxy; that's also
 why the session cookie can't be marked `secure`, since a `secure` cookie would never come back
 and `antiForgery` would then reject every mutation. -/
-def server [SessionStore σ] (db : SQLite) (sessions : σ) : StatelessHandler :=
+def server [SessionStore σ] (db : SQLite) (sessions : σ) :
+    Routing.StatelessHandler .std :=
   Middleware.apply
     [forwardedScheme, forwardedRemoteAddr,
      xFrameOptions .sameOrigin, xContentTypeOptions,
@@ -116,6 +117,6 @@ def server [SessionStore σ] (db : SQLite) (sessions : σ) : StatelessHandler :=
      defaultCharset,
      notModified,
      file "public"]
-    (app db).toStd
+    (app db)
 
 end Todo

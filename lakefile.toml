@@ -22,12 +22,12 @@ rev = "v0.6.2"
 name = "routing-std"
 git = "https://github.com/paulbutcher/lean-routing"
 subDir = "std"
-rev = "v0.13.0"
+rev = "v0.15.1"
 
 [[require]]
 name = "middleware"
 git = "https://github.com/paulbutcher/lean-middleware"
-rev = "v0.17.1"
+rev = "v0.18.0"
 
 [[lean_lib]]
 name = "Todo"
