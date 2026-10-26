@@ -22,7 +22,7 @@ rev = "v0.6.2"
 name = "routing-std"
 git = "https://github.com/paulbutcher/lean-routing"
 subDir = "std"
-rev = "v0.15.1"
+rev = "v0.15.2"
 
 [[require]]
 name = "middleware"
