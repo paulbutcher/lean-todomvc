@@ -96,27 +96,16 @@ def app (db : SQLite) : Routing.StatelessHandler .std :=
     .delete patterns.clearCompleted ∘ clearCompletedHandler
   ] |> toHandler
 
-/-- The routes wrapped in the middleware stack recommended for a browser-facing site, in
-`Middleware.apply`'s documented order. `hsts` and `sslRedirect` are left out because this server
-is run directly over plain http rather than behind a TLS-terminating reverse proxy; that's also
-why the session cookie can't be marked `secure`, since a `secure` cookie would never come back
-and `antiForgery` would then reject every mutation. -/
+/-- `siteDefaults` rather than `secureSiteDefaults` because this server is run directly over plain
+http rather than behind a TLS-terminating reverse proxy; that's also why the session cookie can't
+be marked `secure`, since a `secure` cookie would never come back and `antiForgery` would then
+reject every mutation. -/
 def server [SessionStore σ] (db : SQLite) (sessions : σ) :
     Routing.StatelessHandler .std :=
-  Middleware.apply
-    [forwardedScheme, forwardedRemoteAddr,
-     xFrameOptions .sameOrigin, xContentTypeOptions,
-     catchAll,
-     cookies,
-     session sessions
-       { cookieName := "todomvc-session",
-         cookieAttrs := { path := some "/", httpOnly := true, sameSite := some .lax } },
-     params,
-     antiForgery,
-     contentType,
-     defaultCharset,
-     notModified,
-     file "public"]
+  defaults
+    { siteDefaults sessions with
+      session := session sessions { cookieName := "todomvc-session" },
+      static := file "public" }
     (app db)
 
 end Todo
