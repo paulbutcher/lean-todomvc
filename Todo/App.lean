@@ -97,9 +97,7 @@ def app (db : SQLite) : Routing.StatelessHandler .std :=
   ] |> toHandler
 
 /-- `siteDefaults` rather than `secureSiteDefaults` because this server is run directly over plain
-http rather than behind a TLS-terminating reverse proxy; that's also why the session cookie can't
-be marked `secure`, since a `secure` cookie would never come back and `antiForgery` would then
-reject every mutation. -/
+http rather than behind a TLS-terminating reverse proxy. -/
 def server [SessionStore σ] (db : SQLite) (sessions : σ) :
     Routing.StatelessHandler .std :=
   defaults
