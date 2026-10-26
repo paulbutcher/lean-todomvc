@@ -100,10 +100,6 @@ def app (db : SQLite) : Routing.StatelessHandler .std :=
 http rather than behind a TLS-terminating reverse proxy. -/
 def server [SessionStore σ] (db : SQLite) (sessions : σ) :
     Routing.StatelessHandler .std :=
-  defaults
-    { siteDefaults sessions with
-      session := session sessions { cookieName := "todomvc-session" },
-      static := file "public" }
-    (app db)
+  app db |> defaults { siteDefaults sessions with static := file "public" }
 
 end Todo
