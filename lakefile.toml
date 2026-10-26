@@ -27,7 +27,7 @@ rev = "v0.15.2"
 [[require]]
 name = "middleware"
 git = "https://github.com/paulbutcher/lean-middleware"
-rev = "v0.19.0"
+rev = "v0.19.1"
 
 [[lean_lib]]
 name = "Todo"
