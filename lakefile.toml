@@ -11,7 +11,7 @@ rev = "v4.34.0"
 [[require]]
 name = "html"
 git = "https://github.com/paulbutcher/lean-html"
-rev = "v0.11.0"
+rev = "v0.12.0"
 
 [[require]]
 name = "htmx"
