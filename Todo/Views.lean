@@ -107,10 +107,9 @@ def mutationFragment (items allItems : Array Item) (filter : Filter) : String :=
 
 def pageView (csrfToken : Option String) (items allItems : Array Item) (filter : Filter) : String :=
   document
-    [ head
-        [ meta_ [("charset", "utf-8")], title "todos", script htmxScript, link todomvcCss,
-          link favicon ],
-      body
+    (head (title "todos")
+      [ meta_ [("charset", "utf-8")], script htmxScript, link todomvcCss, link favicon ])
+    (body
         [ section_
             [ header
                 [ h1 ["todos"],
@@ -127,7 +126,7 @@ def pageView (csrfToken : Option String) (items allItems : Array Item) (filter :
               footerFragment allItems filter ]
             { class_ := "todoapp" },
           footer [p ["Double-click a todo to edit it."]] { class_ := "info" } ]
-        (rawAttrs := csrfAttrs csrfToken) ]
+        (rawAttrs := csrfAttrs csrfToken))
     (lang := "en")
 
 end Todo
