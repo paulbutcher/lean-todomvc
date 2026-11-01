@@ -77,7 +77,7 @@ def listSection (items : Array Item) : Node .flow :=
           class_ := "toggle-all", hxPost := links.toggleAll,
           hxTarget := "#todo-list-section", hxSwap := some .outerHTML },
       label [] { for_ := "toggle-all" },
-      ul (items.toList.map itemView) { class_ := "todo-list" } ]
+      ul (items.toList.map (itemView ·)) { class_ := "todo-list" } ]
     { id := "todo-list-section", class_ := "main" }
 
 def filterLink (current target : Filter) (label : String) : Node .listItem :=
