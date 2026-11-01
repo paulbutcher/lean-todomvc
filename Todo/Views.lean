@@ -3,8 +3,8 @@ Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import Html
-import Htmx
+import HtmlSyntax
+import HtmlRenderer
 import Todo.Db
 import Todo.Links
 
@@ -13,23 +13,12 @@ namespace Todo
 open Html
 open Routes
 
-def htmxScript : ScriptAttrs :=
-  { src := "https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
-    integrity := "sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V"
-    crossorigin := "anonymous" }
-
-def todomvcCss : LinkAttrs :=
-  { rel := "stylesheet", href := "https://unpkg.com/todomvc-app-css@2.4.3/index.css" }
-
-def favicon : LinkAttrs :=
-  { rel := "icon", href := "/favicon.svg" }
-
 /-- Puts the anti-forgery token on `<body>` as an `hx-headers` attribute, which HTMX inherits
 down the whole tree, so every mutating request below carries it. `none` when no `antiForgery`
 middleware established a token, in which case there's nothing to send. -/
-def csrfAttrs : Option String → List (String × String)
+def csrfAttrs : Option String → Attrs
   | none => []
-  | some token => [("hx-headers", "{\"X-CSRF-Token\": \"" ++ token ++ "\"}")]
+  | some token => reqAttr "hx-headers" ("{\"X-CSRF-Token\": \"" ++ token ++ "\"}")
 
 def Filter.path : Filter → String
   | .all => links.index
@@ -44,45 +33,38 @@ def filterFromPath (path : String) : Filter :=
 def itemView (item : Item) : Node .listItem :=
   let itemId := s!"todo-{item.id}"
   let id := item.id.toInt.toNat
-  li
-    [ div
-        [ Htmx.input
-            { type := "checkbox", checked := item.completed, class_ := "toggle",
-              hxPost := links.toggle id, hxTarget := "#todo-list-section",
-              hxSwap := some .outerHTML },
-          Htmx.label [item.title]
-            { hxGet := links.edit id, hxTrigger := "dblclick",
-              hxTarget := s!"#{itemId}", hxSwap := some .outerHTML },
-          Htmx.button []
-            { class_ := "destroy", hxDelete := links.todo id,
-              hxTarget := "#todo-list-section", hxSwap := some .outerHTML } ]
-        { class_ := "view" } ]
-    { id := itemId, class_ := if item.completed then "completed" else none }
+  html! <li id={itemId} {optAttr "class" (if item.completed then some "completed" else none)}>
+          <div class="view">
+            <input type="checkbox" checked={item.completed} class="toggle"
+              hx-post={links.toggle id} hx-target="#todo-list-section" hx-swap="outerHTML"/>
+            <label hx-get={links.edit id} hx-trigger="dblclick" hx-target={s!"#{itemId}"}
+              hx-swap="outerHTML">{item.title}</label>
+            <button class="destroy" hx-delete={links.todo id} hx-target="#todo-list-section"
+              hx-swap="outerHTML"></button>
+          </div>
+        </li>
 
 def itemEditView (item : Item) : Node .listItem :=
-  let itemId := s!"todo-{item.id}"
-  li
-    [ Htmx.input
-        { type := "text", name := "title", value := item.title, class_ := "edit",
-          hxPut := links.todo item.id.toInt.toNat, hxTrigger := "blur, keyup[key=='Enter']",
-          hxTarget := "#todo-list-section", hxSwap := some .outerHTML }
-        [("autofocus", "autofocus")] ]
-    { id := itemId, class_ := "editing" }
+  html! <li id={s!"todo-{item.id}"} class="editing">
+          <input type="text" name="title" value={item.title} class="edit"
+            hx-put={links.todo item.id.toInt.toNat} hx-trigger="blur, keyup[key=='Enter']"
+            hx-target="#todo-list-section" hx-swap="outerHTML" autofocus/>
+        </li>
 
 def listSection (items : Array Item) : Node .flow :=
   let allCompleted := items.size > 0 && items.all (·.completed)
-  section_
-    [ Htmx.input
-        { type := "checkbox", checked := allCompleted, id := "toggle-all",
-          class_ := "toggle-all", hxPost := links.toggleAll,
-          hxTarget := "#todo-list-section", hxSwap := some .outerHTML },
-      label [] { for_ := "toggle-all" },
-      ul (items.toList.map (itemView ·)) { class_ := "todo-list" } ]
-    { id := "todo-list-section", class_ := "main" }
+  html! <section id="todo-list-section" class="main">
+          <input type="checkbox" checked={allCompleted} id="toggle-all" class="toggle-all"
+            hx-post={links.toggleAll} hx-target="#todo-list-section" hx-swap="outerHTML"/>
+          <label for="toggle-all"></label>
+          <ul class="todo-list">{items.toList.map itemView}</ul>
+        </section>
 
 def filterLink (current target : Filter) (label : String) : Node .listItem :=
-  li [ a { href := target.path,
-           class_ := if current == target then "selected" else none } [label] ]
+  html! <li>
+          <a href={target.path}
+            {optAttr "class" (if current == target then some "selected" else none)}>{label}</a>
+        </li>
 
 def countLabel(activeCount : Nat) : String :=
   if activeCount == 1 then "1 item left" else s!"{activeCount} items left"
@@ -90,43 +72,52 @@ def countLabel(activeCount : Nat) : String :=
 def footerFragment (allItems : Array Item) (filter : Filter) : Node .flow :=
   let activeCount := (allItems.filter (!·.completed)).size
   let completedCount := allItems.size - activeCount
-  Htmx.footer
-    ([ (span [countLabel activeCount] { class_ := "todo-count" } : Node .flow),
-       ul [ filterLink filter .all "All", filterLink filter .active "Active",
-            filterLink filter .completed "Completed" ]
-         { class_ := "filters" } ]
-      ++ if completedCount > 0 then
-           [ (Htmx.button ["Clear completed"]
-               { class_ := "clear-completed", hxDelete := links.clearCompleted,
-                 hxTarget := "#todo-list-section", hxSwap := some .outerHTML } : Node .flow) ]
-         else [])
-    { id := "todo-footer", class_ := "footer", hxSwapOob := "true" }
+  let clearCompleted : Option (Node .flow) :=
+    if completedCount > 0 then
+      some (html! <button class="clear-completed" hx-delete={links.clearCompleted}
+                    hx-target="#todo-list-section" hx-swap="outerHTML">Clear completed</button>)
+    else none
+  html! <footer id="todo-footer" class="footer" hx-swap-oob="true">
+          <span class="todo-count">{countLabel activeCount}</span>
+          <ul class="filters">
+            {filterLink filter .all "All"}
+            {filterLink filter .active "Active"}
+            {filterLink filter .completed "Completed"}
+          </ul>
+          {clearCompleted}
+        </footer>
 
 def mutationFragment (items allItems : Array Item) (filter : Filter) : String :=
   Node.render (listSection items) ++ Node.render (footerFragment allItems filter)
 
 def pageView (csrfToken : Option String) (items allItems : Array Item) (filter : Filter) : String :=
   document
-    (head (title "todos")
-      [ meta_ [("charset", "utf-8")], script htmxScript, link todomvcCss, link favicon ])
-    (body
-        [ section_
-            [ header
-                [ h1 ["todos"],
-                  Htmx.form
-                    [ input
-                        { name := "title", placeholder := "What needs to be done?",
-                          class_ := "new-todo" }
-                        [("autofocus", "autofocus")] ]
-                    { hxPost := links.todos, hxTarget := "#todo-list-section",
-                      hxSwap := some .outerHTML,
-                      hxOnHtmx := [("after-request", "this.reset()")] } ]
-                { class_ := "header" },
-              listSection items,
-              footerFragment allItems filter ]
-            { class_ := "todoapp" },
-          footer [p ["Double-click a todo to edit it."]] { class_ := "info" } ]
-        (rawAttrs := csrfAttrs csrfToken))
+    (html! <head>
+             <meta charset="utf-8"/>
+             <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
+               integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V"
+               crossorigin="anonymous"></script>
+             <link rel="stylesheet" href="https://unpkg.com/todomvc-app-css@2.4.3/index.css"/>
+             <link rel="icon" href="/favicon.svg"/>
+             <title>todos</title>
+           </head>)
+    (html! <body {csrfAttrs csrfToken}>
+             <section class="todoapp">
+               <header class="header">
+                 <h1>todos</h1>
+                 <form hx-post={links.todos} hx-target="#todo-list-section" hx-swap="outerHTML"
+                   hx-on::after-request="this.reset()">
+                   <input name="title" placeholder="What needs to be done?" class="new-todo"
+                     autofocus/>
+                 </form>
+               </header>
+               {listSection items}
+               {footerFragment allItems filter}
+             </section>
+             <footer class="info">
+               <p>Double-click a todo to edit it.</p>
+             </footer>
+           </body>)
     (lang := "en")
 
 end Todo

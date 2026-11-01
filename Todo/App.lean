@@ -5,7 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 
 import Std.Http.Server
 import SQLite
-import Html
+import HtmlRenderer
 import RoutingStd
 import Middleware
 import Todo.Db
